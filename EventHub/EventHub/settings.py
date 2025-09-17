@@ -63,6 +63,12 @@ REST_FRAMEWORK = {
 
     'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
     'PAGE_SIZE': 2,
+
+    "DATETIME_FORMAT": "%Y-%m-%d %H:%M:%S",
+    "DATETIME_INPUT_FORMATS": [
+        "%Y-%m-%d %H:%M:%S",  # 2025-10-20 19:30:00
+        "%Y-%m-%d %H:%M"      # 2025-10-20 19:30
+    ],
     }
 
 
