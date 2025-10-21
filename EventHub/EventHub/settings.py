@@ -1,6 +1,7 @@
 from pathlib import Path
 import os
 import environ
+from datetime import timedelta
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -71,6 +72,10 @@ REST_FRAMEWORK = {
     ],
     }
 
+SIMPLE_JWT = {
+    'ACCESS_TOKEN_LIFETIME': timedelta(days=7),  # tempo de vida do token de acesso
+    'REFRESH_TOKEN_LIFETIME': timedelta(days=30),
+  }  # tempo de vida do token de refresh
 
 ROOT_URLCONF = 'EventHub.urls'
 
