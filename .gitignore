@@ -1,24 +1,51 @@
-### Python ###
-# Byte-compiled / optimized / DLL files
+# --- Root .gitignore for EventHub (backend + frontend)
+
+# Python / Django
 __pycache__/
 *.py[cod]
 *$py.class
-
-# Environments
-.env
-.venv
-env/
-venv/
-ENV/
-env.bak/
-venv.bak/
-
-### Django ###
 *.log
 *.pot
 *.pyc
-__pycache__/
-local_settings.py
-db.sqlite3
-db.sqlite3-journal
-media
+
+# Django project database and media
+EventHub/db.sqlite3
+EventHub/db.sqlite3-journal
+EventHub/media/
+
+# Environments / Secrets
+.env
+*.env
+.venv/
+venv/
+ENV/
+env/
+env.bak/
+venv.bak/
+EventHub/.env
+EventHub/EventHub/.env
+EventApp/.env
+
+# Node / Vite (frontend)
+EventApp/node_modules/
+EventApp/dist/
+EventApp/.vite/
+npm-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Build / coverage / eggs
+dist/
+build/
+coverage/
+*.coverage
+*.egg-info/
+
+# IDE / Editor
+.vscode/
+.idea/
+*.iml
+
+# OS
+.DS_Store
+Thumbs.db

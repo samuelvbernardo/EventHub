@@ -21,7 +21,12 @@ SECRET_KEY = env('SECRET_KEY')
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = env('DEBUG')
 
-ALLOWED_HOSTS = []
+CORS_ALLOW_CREDENTIALS = True
+CORS_ALLOWED_ORIGINS = env.list('CORS_ALLOWED_ORIGINS')
+
+# Hosts permitidos (necessário para evitar DisallowedHost)
+# Para desenvolvimento, inclua localhost e 127.0.0.1 por padrão
+ALLOWED_HOSTS = env.list('ALLOWED_HOSTS', default=['localhost', '127.0.0.1', '0.0.0.0'])
 
 
 LOCAL_APPS = [
@@ -42,9 +47,11 @@ INSTALLED_APPS = [
     'rest_framework_simplejwt',
     'drf_spectacular',
     'drf_spectacular_sidecar',
+    'corsheaders',
 ] + LOCAL_APPS
 
 MIDDLEWARE = [
+    'corsheaders.middleware.CorsMiddleware',
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
@@ -63,7 +70,7 @@ REST_FRAMEWORK = {
     ),
 
     'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
-    'PAGE_SIZE': 2,
+    'PAGE_SIZE': 9,
 
     "DATETIME_FORMAT": "%Y-%m-%d %H:%M:%S",
     "DATETIME_INPUT_FORMATS": [
@@ -72,10 +79,12 @@ REST_FRAMEWORK = {
     ],
     }
 
+# JSON Web Token settings
 SIMPLE_JWT = {
-    'ACCESS_TOKEN_LIFETIME': timedelta(days=7),  # tempo de vida do token de acesso
-    'REFRESH_TOKEN_LIFETIME': timedelta(days=30),
-  }  # tempo de vida do token de refresh
+    "ACCESS_TOKEN_LIFETIME": timedelta(minutes=30),
+    "REFRESH_TOKEN_LIFETIME": timedelta(days=7),
+    "AUTH_HEADER_TYPES": ("Bearer",),
+}
 
 ROOT_URLCONF = 'EventHub.urls'
 

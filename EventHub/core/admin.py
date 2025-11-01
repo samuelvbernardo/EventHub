@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import Evento, Participante, Inscricao, Notificacao
+from .models import Evento, Participante, Inscricao, Notificacao, Organizador
 
 # Admin base para aplicar soft delete
 class SoftDeleteAdmin(admin.ModelAdmin):
@@ -14,8 +14,9 @@ class SoftDeleteAdmin(admin.ModelAdmin):
             obj.delete()
 
     def get_queryset(self, request):
-        # Mostra todos os registros, inclusive deletados
-        return self.model.all_objects.all()
+        # Mostra apenas registros não deletados por padrão
+        qs = super().get_queryset(request)
+        return qs.filter(is_deleted=False)
 
 
 @admin.register(Evento)
@@ -55,3 +56,9 @@ class NotificacaoAdmin(SoftDeleteAdmin):
     )
     list_filter = ("is_deleted",)
     search_fields = ("mensagem", "participante__nome", "evento__titulo")
+
+@admin.register(Organizador)
+class OrganizadorAdmin(SoftDeleteAdmin):
+    list_display = ("user", "nome", "email", "telefone", "empresa")
+    list_filter = ("is_deleted",)
+    search_fields = ("empresa", "user")
