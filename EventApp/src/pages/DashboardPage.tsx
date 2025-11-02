@@ -16,7 +16,7 @@ export default function DashboardPage() {
 
   const { data: eventosData, loading: eventosLoading } = useFetch(() => eventosService.listEventos(1), [])
 
-  const { data: inscricoesData, loading: inscricoesLoading } = useFetch(() => inscricoesService.listInscricoes(1), [])
+  const { data: inscricoesData, loading: inscricoesLoading } = useFetch(() => inscricoesService.listInscricoes({ page: 1 }), [])
 
   const recentEventos = eventosData?.results?.slice(0, 3) || []
   const recentInscricoes = inscricoesData?.results?.slice(0, 3) || []

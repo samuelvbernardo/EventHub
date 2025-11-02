@@ -2,21 +2,38 @@ import { API_ENDPOINTS } from "../lib/constants/api"
 import type { Inscricao, PaginatedResponse } from "../lib/types/index"
 import { useApi } from "../lib/hooks/useApi"
 
+export interface InscricaoFilters {
+  page?: number
+  status?: string
+  evento?: number
+  search?: string
+}
+
 export function useInscricoesService() {
   const api = useApi()
 
   return {
-    listInscricoes: async (page = 1): Promise<PaginatedResponse<Inscricao>> => {
-      const response = await api.get(API_ENDPOINTS.INSCRICOES, {
-        params: { page },
-      })
+    listInscricoes: async (filters: InscricaoFilters = {}): Promise<PaginatedResponse<Inscricao>> => {
+      const { page = 1, status, evento, search } = filters
+      const params: Record<string, any> = { page }
+      
+      if (status) params.status = status
+      if (evento) params.evento = evento
+      if (search) params.search = search
+      
+      const response = await api.get(API_ENDPOINTS.INSCRICOES, { params })
       return response.data
     },
 
-    listInscricoesOrganizador: async (page = 1): Promise<PaginatedResponse<Inscricao>> => {
-      const response = await api.get(API_ENDPOINTS.INSCRICOES_ORGANIZADOR, {
-        params: { page },
-      })
+    listInscricoesOrganizador: async (filters: InscricaoFilters = {}): Promise<PaginatedResponse<Inscricao>> => {
+      const { page = 1, status, evento, search } = filters
+      const params: Record<string, any> = { page }
+      
+      if (status) params.status = status
+      if (evento) params.evento = evento
+      if (search) params.search = search
+      
+      const response = await api.get(API_ENDPOINTS.INSCRICOES_ORGANIZADOR, { params })
       return response.data
     },
 

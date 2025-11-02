@@ -120,18 +120,33 @@ class InscricaoViewSet(viewsets.ModelViewSet):
     queryset = Inscricao.objects.all()
     serializer_class = InscricaoSerializer
     permission_classes = [IsAuthenticated]
+    filterset_fields = ['status', 'evento', 'participante']  # Filtros básicos
 
     def get_queryset(self):
         user = self.request.user
         base_qs = Inscricao.objects.select_related("participante", "evento", "evento__organizer")
+        
+        # Filtros via query params
+        status_filter = self.request.query_params.get('status', None)
+        evento_filter = self.request.query_params.get('evento', None)
+        
         try:
             if hasattr(user, 'participante'):
-                return base_qs.filter(participante=user.participante)
+                qs = base_qs.filter(participante=user.participante)
             elif hasattr(user, 'organizador'):
-                return base_qs.filter(evento__organizer=user.organizador)
+                qs = base_qs.filter(evento__organizer=user.organizador)
+            else:
+                qs = Inscricao.objects.none()
         except Exception:
-            pass
-        return Inscricao.objects.none()
+            qs = Inscricao.objects.none()
+        
+        # Aplicar filtros de status e evento
+        if status_filter:
+            qs = qs.filter(status=status_filter)
+        if evento_filter:
+            qs = qs.filter(evento_id=evento_filter)
+        
+        return qs
 
     def create(self, request, *args, **kwargs):
         # Validar autenticação
@@ -151,9 +166,25 @@ class InscricaoViewSet(viewsets.ModelViewSet):
         if not evento_id:
             return Response({"detail": "evento_id é obrigatório"}, status=status.HTTP_400_BAD_REQUEST)
 
-        # Prevenir duplicidade
-        if Inscricao.objects.filter(participante=participante, evento_id=evento_id, is_deleted=False).exists():
-            return Response({"detail": "Você já está inscrito neste evento"}, status=status.HTTP_400_BAD_REQUEST)
+        # Verificar se já existe inscrição (ativa ou cancelada)
+        inscricao_existente = Inscricao.all_objects.filter(
+            participante=participante, 
+            evento_id=evento_id
+        ).first()
+        
+        if inscricao_existente:
+            # Se já foi cancelada, bloquear nova inscrição
+            if inscricao_existente.status == 'cancelada':
+                return Response(
+                    {"detail": "Você cancelou sua inscrição neste evento e não pode se inscrever novamente."},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            # Se não está cancelada e não foi deletada, já está inscrito
+            if not inscricao_existente.is_deleted:
+                return Response(
+                    {"detail": "Você já está inscrito neste evento"},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
 
         # Buscar o evento para verificar se é pago
         try:

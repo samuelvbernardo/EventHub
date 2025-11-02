@@ -7,7 +7,9 @@ import { Button } from "../atoms/Button"
 import type { Evento } from "../../lib/types/index"
 import { formatDate } from "../../lib/utils/helpers"
 import { getEventTypeBadgeClasses, getEventTypeLabel } from "../../lib/constants/eventColors"
+import { getInscricaoStatusBadgeClasses } from "../../lib/constants/statusColors"
 import { EventDetailModal } from "./EventDetailModal"
+import { StatusIcon } from "../atoms/StatusIcon"
 
 interface EventCardProps {
   evento: Evento
@@ -20,9 +22,59 @@ interface EventCardProps {
 export const EventCard: React.FC<EventCardProps> = ({ evento, onInscribe, onEdit, onDelete, canEdit = false }) => {
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false)
 
+  // Determina se o botão de inscrição deve estar habilitado
+  // Só habilita se NÃO houver nenhuma inscrição (status null/undefined)
+  const isSubscribeButtonEnabled = !evento.inscricaoStatus
+
+  // Define a cor da borda baseada no status da inscrição
+  const getBorderColor = () => {
+    if (!evento.inscricaoStatus) return ""
+    
+    switch (evento.inscricaoStatus) {
+      case "confirmada":
+        return "border border-green-300 shadow-green-200"
+      case "pendente":
+        return "border border-amber-300 shadow-amber-200"
+      case "cancelada":
+        return "border border-red-300 shadow-red-200"
+      default:
+        return ""
+    }
+  }
+
+  // Define o label do status para exibição
+  const getStatusLabel = (status: "confirmada" | "pendente" | "cancelada") => {
+    switch (status) {
+      case "confirmada":
+        return "Inscrição confirmada"
+      case "pendente":
+        return "Inscrição pendente de confirmação"
+      case "cancelada":
+        return "Inscrição cancelada"
+      default:
+        return ""
+    }
+  }
+
+  // Define o texto do botão baseado no status
+  const getButtonText = () => {
+    if (!evento.inscricaoStatus) return "Inscrever-se"
+    
+    switch (evento.inscricaoStatus) {
+      case "confirmada":
+        return "Inscrição confirmada"
+      case "pendente":
+        return "Aguardando confirmação"
+      case "cancelada":
+        return "Inscrição cancelada"
+      default:
+        return "Inscrever-se"
+    }
+  }
+
   return (
     <>
-      <Card className={`transition-shadow hover:shadow-lg ${evento.isInscrito ? 'border border-green-300 shadow-green-200' : ''}`}>
+      <Card className={`transition-shadow hover:shadow-lg ${getBorderColor()}`}>
         <CardHeader>
           <div className="flex justify-between items-start gap-4">
             <div className="flex-1">
@@ -54,13 +106,10 @@ export const EventCard: React.FC<EventCardProps> = ({ evento, onInscribe, onEdit
         <div className="space-y-3">
           <p className="text-sm text-muted-foreground line-clamp-2">{evento.descricao}</p>
 
-          {evento.isInscrito && (
-            <div className="flex items-center gap-2 mt-2 text-green-700 text-sm font-medium">
-              {/* CheckCircle Icon */}
-              <svg className="w-4 h-4 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-              <span>Inscrito neste evento</span>
+          {evento.inscricaoStatus && (
+            <div className={`flex items-center gap-2 mt-2 text-sm font-medium ${getInscricaoStatusBadgeClasses(evento.inscricaoStatus)}`}>
+              <StatusIcon status={evento.inscricaoStatus} />
+              <span>{getStatusLabel(evento.inscricaoStatus)}</span>
             </div>
           )}
 
@@ -126,8 +175,12 @@ export const EventCard: React.FC<EventCardProps> = ({ evento, onInscribe, onEdit
         </Button>
 
         {onInscribe && !canEdit && (
-          <Button onClick={() => onInscribe(evento.id)} className="flex-1" disabled={!!evento.isInscrito}>
-            {evento.isInscrito ? 'Já inscrito' : 'Inscrever-se'}
+          <Button 
+            onClick={() => onInscribe(evento.id)} 
+            className="flex-1" 
+            disabled={!isSubscribeButtonEnabled}
+          >
+            {getButtonText()}
           </Button>
         )}
         {canEdit && (

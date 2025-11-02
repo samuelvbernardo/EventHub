@@ -39,23 +39,24 @@ export default function EventosPage() {
       try {
         const result = await inscricoesService.createInscricaoByEventoId(eventoId)
         
-        // Mensagem padrão vinda do backend
+        // Exibir mensagem do backend
         const backendMessage = result?.message || "Inscrição realizada com sucesso"
-
-        // Se for evento pago, ajustar o texto para incluir orientação de e-mail
-        if (result?.evento_pago) {
-          const eventTitle = result?.inscricao?.evento_titulo || "evento"
-          const paidMessage = `Sua inscrição no evento '${eventTitle}' foi registrada com status 'pendente'. Verifique seu e-mail para concluir o processo de pagamento.`
-          toast.info(paidMessage)
+        
+        // Escolher tipo de toast baseado no status
+        if (result?.status === 'pendente') {
+          toast.info(backendMessage)
         } else {
-          // Evento gratuito mantém a mensagem original
           toast.success(backendMessage)
         }
         
-        refetch()
+        // Auto-atualizar lista de eventos para refletir isInscrito
+        await refetch()
       } catch (error: any) {
-        const msg = error?.response?.data?.detail || error?.response?.data?.message || "Erro ao realizar inscrição"
-        toast.error(msg)
+        // Exibir erro do backend
+        const errorDetail = error?.response?.data?.detail || 
+                           error?.response?.data?.message || 
+                           "Não foi possível realizar a inscrição. Tente novamente."
+        toast.error(errorDetail)
       }
     },
     [inscricoesService, refetch, toast],

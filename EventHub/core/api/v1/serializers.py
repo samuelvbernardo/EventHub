@@ -92,6 +92,7 @@ class EventoSerializer(serializers.ModelSerializer):
     organizer = serializers.PrimaryKeyRelatedField(read_only=True)
     organizer_nome = serializers.CharField(source='organizer.nome', read_only=True)
     isInscrito = serializers.SerializerMethodField(read_only=True)
+    inscricaoStatus = serializers.SerializerMethodField(read_only=True)
 
     class Meta:
         model = Evento
@@ -127,6 +128,27 @@ class EventoSerializer(serializers.ModelSerializer):
             ).exclude(status='cancelada').exists()
         except Exception:
             return False
+
+    def get_inscricaoStatus(self, obj):
+        """Retorna o status da inscrição do usuário autenticado neste evento (ou None se não inscrito)."""
+        request = self.context.get('request')
+        user = getattr(request, 'user', None)
+        try:
+            if not user or not user.is_authenticated:
+                return None
+            # Garantir que é participante
+            if not hasattr(user, 'participante') or user.participante is None:
+                return None
+            # Buscar a inscrição mais recente do usuário para este evento
+            inscricao = Inscricao.objects.filter(
+                evento=obj,
+                participante__user=user,
+                is_deleted=False
+            ).order_by('-data_inscricao').first()
+            
+            return inscricao.status if inscricao else None
+        except Exception:
+            return None
 
 
 class EventoBriefSerializer(serializers.ModelSerializer):
@@ -206,22 +228,26 @@ class ParticipanteDetailSerializer(serializers.ModelSerializer):
 
     def get_inscricoes(self, obj):
         request = self.context.get('request')
-        qs = obj.inscricoes.select_related('evento', 'participante').all()
+        # Filtrar apenas inscrições confirmadas
+        qs = obj.inscricoes.filter(status='confirmada').select_related('evento', 'participante')
         try:
             user = getattr(request, 'user', None) if request else None
             if user and hasattr(user, 'organizador') and user.organizador is not None:
-                qs = qs.filter(evento__organizer=user.organizador, status='confirmada')
+                # Organizador vê apenas inscrições confirmadas dos seus eventos
+                qs = qs.filter(evento__organizer=user.organizador)
         except Exception:
             pass
         return InscricaoBriefSerializer(qs, many=True).data
 
     def get_total_inscricoes(self, obj):
         request = self.context.get('request')
-        qs = obj.inscricoes.all()
+        # Contar apenas inscrições confirmadas
+        qs = obj.inscricoes.filter(status='confirmada')
         try:
             user = getattr(request, 'user', None) if request else None
             if user and hasattr(user, 'organizador') and user.organizador is not None:
-                return qs.filter(evento__organizer=user.organizador, status='confirmada').count()
+                # Organizador conta apenas inscrições confirmadas dos seus eventos
+                return qs.filter(evento__organizer=user.organizador).count()
         except Exception:
             pass
         return qs.count()

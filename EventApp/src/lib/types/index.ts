@@ -42,6 +42,8 @@ export interface Evento extends BaseModel {
   organizer_nome?: string
   // Campo calculado no backend: indica se o usuário autenticado possui inscrição ativa neste evento
   isInscrito?: boolean
+  // Status da inscrição do usuário autenticado neste evento
+  inscricaoStatus?: "pendente" | "confirmada" | "cancelada" | null
   // Campos adicionais quando recuperado via detalhe
   inscricoes?: Inscricao[]
   total_inscricoes?: number
