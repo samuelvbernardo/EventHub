@@ -32,6 +32,21 @@ interface EventFormModalProps {
 }
 
 export const EventFormModal: React.FC<EventFormModalProps> = ({ evento, onSave, onCancel, loading = false }) => {
+  // Utilitário: converte string de data/hora da API para o formato aceito por inputs datetime-local (YYYY-MM-DDTHH:mm)
+  const formatDateForInput = (value?: string) => {
+    if (!value) return ""
+    // Já no formato ISO com 'T'
+    if (value.includes("T")) {
+      const [datePart, timePart = ""] = value.split("T")
+      const [hh = "00", mm = "00"] = timePart.replace("Z", "").split(":")
+      return `${datePart}T${String(hh).padStart(2, "0")}:${String(mm).padStart(2, "0")}`
+    }
+    // Formatos "YYYY-MM-DD HH:mm:ss" ou "YYYY-MM-DD HH:mm"
+    const [datePart = "", timePart = ""] = value.split(" ")
+    const [hh = "00", mm = "00"] = timePart.split(":")
+    if (!datePart) return ""
+    return `${datePart}T${String(hh).padStart(2, "0")}:${String(mm).padStart(2, "0")}`
+  }
   // 1. Schema de validação
   const schema = yup.object().shape({
     titulo: yup.string().required("Título é obrigatório"),
@@ -94,8 +109,8 @@ export const EventFormModal: React.FC<EventFormModalProps> = ({ evento, onSave, 
       local: evento?.local || "",
       capacidade: Number(evento?.capacidade) || 0,
       preco: Number(evento?.preco) || 0,
-      data_inicio: evento?.data_inicio || "",
-      data_fim: evento?.data_fim || "",
+      data_inicio: formatDateForInput(evento?.data_inicio) || "",
+      data_fim: formatDateForInput(evento?.data_fim) || "",
       tipo: evento?.tipo || "presencial",
       is_active: evento?.is_active ?? true,
     },
@@ -110,8 +125,8 @@ export const EventFormModal: React.FC<EventFormModalProps> = ({ evento, onSave, 
         local: evento.local,
         capacidade: Number(evento.capacidade) || 0,
         preco: Number(evento.preco) || 0,
-        data_inicio: evento.data_inicio,
-        data_fim: evento.data_fim,
+        data_inicio: formatDateForInput(evento.data_inicio),
+        data_fim: formatDateForInput(evento.data_fim),
         tipo: evento.tipo,
         is_active: evento.is_active,
       })
