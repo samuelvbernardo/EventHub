@@ -4,7 +4,6 @@ import type React from "react"
 import { useNavigate, Link } from "react-router-dom"
 import { useEffect, useState } from "react"
 import { useNotificacoesService } from "../../services"
-import { useNotificationContext } from "../../lib/context/NotificationContext"
 import { useAuth } from "../../lib/context/AuthContext"
 import { Button } from "../atoms/Button"
 import { ConfirmModal } from "../atoms/ConfirmModal"
@@ -13,27 +12,24 @@ import { ConfirmModal } from "../atoms/ConfirmModal"
 export const Header: React.FC = () => {
   const navigate = useNavigate()
   const { state, logout } = useAuth()
-    const [backendUnreadCount, setBackendUnreadCount] = useState<number>(0)
+  const [unreadCount, setUnreadCount] = useState<number>(0)
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false)
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const notificacoesService = useNotificacoesService()
-    const { getUnreadFrontendCount, clearAll } = useNotificationContext()
-
-    // Contador unificado: backend + frontend
-    const unreadCount = backendUnreadCount + getUnreadFrontendCount()
 
   useEffect(() => {
     let mounted = true
 
     const fetchCount = async () => {
       if (!state.user) {
-          if (mounted) setBackendUnreadCount(0)
+        if (mounted) setUnreadCount(0)
         return
       }
       try {
         const count = await notificacoesService.getUnreadCount()
-          if (mounted) setBackendUnreadCount(count)
+        if (mounted) setUnreadCount(count)
       } catch (err) {
-        // ignore
+        if (mounted) setUnreadCount(0)
       }
     }
 
@@ -46,15 +42,13 @@ export const Header: React.FC = () => {
       mounted = false
       window.removeEventListener("notificationsUpdated", handler)
     }
-    }, [state.user, notificacoesService, getUnreadFrontendCount])
+  }, [state.user, notificacoesService])
 
   const handleLogoutClick = () => {
     setShowLogoutConfirm(true)
   }
 
   const confirmLogout = () => {
-    // Limpar notificações (frontend + storage) antes de sair
-    try { clearAll() } catch {}
     logout()
     setShowLogoutConfirm(false)
     navigate("/login")
@@ -75,6 +69,7 @@ export const Header: React.FC = () => {
             >
               EventHub
             </h1>
+            {/* Menu Desktop */}
             <nav className="hidden md:flex gap-6">
               <Link to="/dashboard" className="text-foreground hover:text-primary transition-colors">Home</Link>
               <Link to="/eventos" className="text-foreground hover:text-primary transition-colors">Eventos</Link>
@@ -83,6 +78,38 @@ export const Header: React.FC = () => {
           </div>
 
           <div className="flex items-center gap-4">
+            {/* Menu Hambúrguer - Mobile */}
+            <button
+              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+              className="md:hidden p-2 rounded-md hover:bg-accent transition-colors"
+              aria-label="Menu"
+            >
+              <svg
+                className="w-6 h-6 text-foreground"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                {mobileMenuOpen ? (
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M6 18L18 6M6 6l12 12"
+                  />
+                ) : (
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M4 6h16M4 12h16M4 18h16"
+                  />
+                )}
+              </svg>
+            </button>
+
+            {/* Username - Hidden on mobile */}
+            {state.user && <span className="hidden sm:block text-sm text-muted-foreground">Olá, {state.user.username}</span>}
             {state.user && <span className="text-sm text-muted-foreground">Olá, {state.user.username}</span>}
             {/* Ícone de notificações com badge */}
               <Link to="/notificacoes" className="relative inline-flex items-center">
@@ -124,6 +151,47 @@ export const Header: React.FC = () => {
             </Button>
           </div>
         </div>
+
+        {/* Menu Mobile - Dropdown */}
+        {mobileMenuOpen && (
+          <div className="md:hidden border-t border-border">
+            <nav className="py-4 space-y-2">
+              <Link
+                to="/dashboard"
+                onClick={() => setMobileMenuOpen(false)}
+                className="block px-4 py-2 text-foreground hover:bg-accent hover:text-primary transition-colors rounded-md"
+              >
+                Home
+              </Link>
+              <Link
+                to="/eventos"
+                onClick={() => setMobileMenuOpen(false)}
+                className="block px-4 py-2 text-foreground hover:bg-accent hover:text-primary transition-colors rounded-md"
+              >
+                Eventos
+              </Link>
+              <Link
+                to="/inscricoes"
+                onClick={() => setMobileMenuOpen(false)}
+                className="block px-4 py-2 text-foreground hover:bg-accent hover:text-primary transition-colors rounded-md"
+              >
+                Inscrições
+              </Link>
+              <Link
+                to="/notificacoes"
+                onClick={() => setMobileMenuOpen(false)}
+                className="block px-4 py-2 text-foreground hover:bg-accent hover:text-primary transition-colors rounded-md"
+              >
+                Notificações {unreadCount > 0 && `(${unreadCount})`}
+              </Link>
+              {state.user && (
+                <div className="px-4 py-2 text-sm text-muted-foreground border-t border-border mt-2 pt-4">
+                  Olá, {state.user.username}
+                </div>
+              )}
+            </nav>
+          </div>
+        )}
       </div>
 
       {/* Modal de confirmação de saída */}

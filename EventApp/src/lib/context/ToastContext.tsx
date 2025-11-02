@@ -3,7 +3,6 @@
 import type React from "react"
 import { createContext, useContext, useState, useCallback } from "react"
 import { Toast, type ToastVariant } from "../../components/atoms/Toast"
-import { useNotificationContext, type NotificationType } from "./NotificationContext"
 
 interface ToastItem {
   id: string
@@ -26,26 +25,12 @@ const ToastContext = createContext<ToastContextValue | undefined>(undefined)
 
 export const ToastProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [toasts, setToasts] = useState<ToastItem[]>([])
-  const notificationContext = useNotificationContext()
-
-  // Mapear variante de toast para tipo de notificação
-  const mapVariantToType = (variant: ToastVariant): NotificationType => {
-    const map: Record<ToastVariant, NotificationType> = {
-      success: "sucesso",
-      error: "erro",
-      warning: "aviso",
-      info: "info"
-    }
-    return map[variant]
-  }
 
   const addToast = useCallback((message: string, variant: ToastVariant = "info", duration = 5000) => {
     const id = `toast-${Date.now()}-${Math.random()}`
     setToasts((prev) => [...prev, { id, message, variant, duration }])
     
-    // Adicionar também ao contexto de notificações
-    notificationContext.addFrontendNotification(mapVariantToType(variant), message)
-  }, [notificationContext])
+  }, [])
 
   const removeToast = useCallback((id: string) => {
     setToasts((prev) => prev.filter((toast) => toast.id !== id))

@@ -1,15 +1,22 @@
 import type React from "react"
-import { Badge } from "../atoms/Badge"
 import { Button } from "../atoms/Button"
-import type { FrontendNotification } from "../../lib/context/NotificationContext"
+import type { NotificationType } from "../../lib/context/NotificationContext"
 
-interface UnifiedNotificationCardProps {
-  notification: FrontendNotification
+
+interface SystemNotificationCardProps {
+  notification: {
+    id: string
+    tipo: NotificationType
+    mensagem: string
+    data: Date
+    is_read: boolean
+    evento_titulo?: string
+  }
   onMarkAsRead: (id: string) => void
   onDelete: (id: string) => void
 }
 
-export const UnifiedNotificationCard: React.FC<UnifiedNotificationCardProps> = ({
+export const UnifiedNotificationCard: React.FC<SystemNotificationCardProps> = ({
   notification,
   onMarkAsRead,
   onDelete,
@@ -65,22 +72,6 @@ export const UnifiedNotificationCard: React.FC<UnifiedNotificationCardProps> = (
     }
   }
 
-  // Ícone de origem
-  const getOriginIcon = (origem: string) => {
-    if (origem === "backend") {
-      return (
-        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 12h14M5 12a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v4a2 2 0 01-2 2M5 12a2 2 0 00-2 2v4a2 2 0 002 2h14a2 2 0 002-2v-4a2 2 0 00-2-2m-2-4h.01M17 16h.01" />
-        </svg>
-      )
-    }
-    return (
-      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-      </svg>
-    )
-  }
-
   const config = getTypeConfig(notification.tipo)
   const timeAgo = getTimeAgo(notification.data)
 
@@ -106,16 +97,6 @@ export const UnifiedNotificationCard: React.FC<UnifiedNotificationCardProps> = (
             <p className={`text-sm font-medium ${notification.is_read ? 'text-muted-foreground' : 'text-foreground'}`}>
               {notification.mensagem}
             </p>
-            
-            {/* Badge de origem */}
-            <div className="flex items-center gap-1 flex-shrink-0">
-              <span className={`${config.color}`}>
-                {getOriginIcon(notification.origem)}
-              </span>
-                <Badge variant={notification.origem === "backend" ? "default" : "outline"} className="text-xs">
-                {notification.origem === "backend" ? "Sistema" : "Interface"}
-              </Badge>
-            </div>
           </div>
 
           <div className="flex items-center justify-between gap-2 mt-2">

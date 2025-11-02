@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from "react"
 import { useNotificacoesService } from "../services/notifiacaoService"
-import { useNotificationContext } from "../lib/context/NotificationContext"
 import { useAuth } from "../lib/context/AuthContext"
 import { Card, CardContent, CardHeader, CardTitle } from "../components/atoms/Card"
 import { Button } from "../components/atoms/Button"
@@ -11,37 +10,31 @@ import { ConfirmModal } from "../components/atoms/ConfirmModal"
 import { Header } from "../components/organisms/Header"
 import { UnifiedNotificationCard } from "../components/molecules/UnifiedNotificationCard"
 import type { Notificacao } from "../lib/types/index"
-import type { FrontendNotification, NotificationType } from "../lib/context/NotificationContext"
+import type { NotificationType } from "../lib/context/NotificationContext"
 
-// Tipo unificado para notificações
-interface UnifiedNotification {
+// ✨ Tipo unificado APENAS para notificações do SISTEMA (backend)
+// Notificações de UI (toasts) NÃO aparecem mais aqui
+interface SystemNotificationDisplay {
   id: string
   tipo: NotificationType
   mensagem: string
-  origem: "frontend" | "backend"
   data: Date
   is_read: boolean
-  // Campos específicos do backend
-  backendId?: number
   evento_titulo?: string
 }
 
 export default function NotificacoesPage() {
   const service = useNotificacoesService()
-  const { frontendNotifications, markFrontendAsRead, markAllFrontendAsRead, deleteFrontendNotification } = useNotificationContext()
   const { state } = useAuth()
   const [notificacoes, setNotificacoes] = useState<Notificacao[]>([])
   const [loading, setLoading] = useState(true)
   const [filter, setFilter] = useState<"all" | "unread" | "read">("all")
-  const [originFilter, setOriginFilter] = useState<"all" | "frontend" | "backend">("all")
   const [deleteConfirmState, setDeleteConfirmState] = useState<{
     isOpen: boolean
-    notificacaoId: string | null
-    origem: "frontend" | "backend"
+    notificacaoId: number | null
   }>({
     isOpen: false,
     notificacaoId: null,
-    origem: "frontend",
   })
 
   useEffect(() => {
@@ -52,10 +45,29 @@ export default function NotificacoesPage() {
       if (!mounted) return
       setLoading(true)
       try {
-        const data = await service.listNotificacoes(1)
-        if (mounted) setNotificacoes(data.results || data)
+        // ✨ Carregar TODAS as notificações (não apenas a primeira página)
+        let allNotifications: Notificacao[] = []
+        let page = 1
+        let hasMore = true
+
+        while (hasMore) {
+          const data = await service.listNotificacoes(page)
+          const results = data.results || data
+          
+          if (Array.isArray(results)) {
+            allNotifications = [...allNotifications, ...results]
+            
+            // Verificar se há mais páginas
+            hasMore = !!data.next
+            page++
+          } else {
+            hasMore = false
+          }
+        }
+
+        if (mounted) setNotificacoes(allNotifications)
       } catch (err) {
-        console.error("Erro ao buscar notificações", err)
+        // Erro silencioso - manter estado anterior
       } finally {
         if (mounted) setLoading(false)
       }
@@ -72,117 +84,78 @@ export default function NotificacoesPage() {
     }
   }, [state.user?.id, service])
 
-    // Converter notificações do backend para formato unificado
-    const backendToUnified = (n: Notificacao): UnifiedNotification => ({
-      id: `backend-${n.id}`,
-      tipo: "info", // Notificações do backend são geralmente informativas
-      mensagem: n.mensagem,
-      origem: "backend",
-      data: new Date(n.created_at),
-      is_read: n.is_read,
-      backendId: n.id,
-      evento_titulo: n.evento_titulo
-    })
+  // ✨ Converter notificações do backend para formato de exibição
+  const backendToDisplay = (n: Notificacao): SystemNotificationDisplay => ({
+    id: `backend-${n.id}`,
+    tipo: "info", // Notificações do backend são geralmente informativas
+    mensagem: n.mensagem,
+    data: new Date(n.created_at),
+    is_read: n.is_read,
+    evento_titulo: n.evento_titulo
+  })
 
-    // Converter notificações do frontend para formato unificado
-    const frontendToUnified = (n: FrontendNotification): UnifiedNotification => ({
-      id: n.id,
-      tipo: n.tipo,
-      mensagem: n.mensagem,
-      origem: n.origem,
-      data: n.data,
-      is_read: n.is_read
-    })
+  // ✨ APENAS notificações do backend (sistema) são exibidas
+  const systemNotifications = notificacoes
+    .map(backendToDisplay)
+    .sort((a, b) => b.data.getTime() - a.data.getTime())
 
-    // Unificar e ordenar notificações
-    const unifiedNotifications = [
-      ...notificacoes.map(backendToUnified),
-      ...frontendNotifications.map(frontendToUnified)
-    ].sort((a, b) => b.data.getTime() - a.data.getTime())
-
-    const handleMarkAsRead = async (id: string, origem: "frontend" | "backend") => {
-      if (origem === "frontend") {
-        markFrontendAsRead(id)
-        return
-      }
-
-      // Backend
-      const backendId = parseInt(id.replace("backend-", ""))
+  const handleMarkAsRead = async (id: string) => {
+    const backendId = parseInt(id.replace("backend-", ""))
     try {
-        await service.markAsRead(backendId)
-        setNotificacoes((prev) => prev.map((it) => (it.id === backendId ? { ...it, is_read: true } : it)))
+      await service.markAsRead(backendId)
+      setNotificacoes((prev) => prev.map((it) => (it.id === backendId ? { ...it, is_read: true } : it)))
       window.dispatchEvent(new Event("notificationsUpdated"))
     } catch (err) {
-      console.error("Erro marcando como lida", err)
+      // Erro silencioso
     }
   }
 
   const handleMarkAllAsRead = async () => {
-      // Marcar frontend
-      markAllFrontendAsRead()
-
-      // Marcar backend
     try {
       const unreadNotifications = notificacoes.filter((n) => !n.is_read)
       await Promise.all(unreadNotifications.map((n) => service.markAsRead(n.id)))
       setNotificacoes((prev) => prev.map((it) => ({ ...it, is_read: true })))
       window.dispatchEvent(new Event("notificationsUpdated"))
     } catch (err) {
-      console.error("Erro marcando todas como lidas", err)
+      // Erro silencioso
     }
   }
 
-    const handleDelete = async (id: string, origem: "frontend" | "backend") => {
+  const handleDelete = async (id: string) => {
+    const backendId = parseInt(id.replace("backend-", ""))
     setDeleteConfirmState({
       isOpen: true,
-      notificacaoId: id,
-        origem,
+      notificacaoId: backendId,
     })
   }
 
   const executeDelete = async () => {
-      const { notificacaoId, origem } = deleteConfirmState
-      if (!notificacaoId) return
+    const { notificacaoId } = deleteConfirmState
+    if (!notificacaoId) return
 
-      if (origem === "frontend") {
-        deleteFrontendNotification(notificacaoId)
-        setDeleteConfirmState({ isOpen: false, notificacaoId: null, origem: "frontend" })
-        return
-      }
-
-      // Backend
-      const backendId = parseInt(notificacaoId.replace("backend-", ""))
     try {
-        await service.deleteNotificacao(backendId)
-        setNotificacoes((prev) => prev.filter((it) => it.id !== backendId))
+      await service.deleteNotificacao(notificacaoId)
+      setNotificacoes((prev) => prev.filter((it) => it.id !== notificacaoId))
       window.dispatchEvent(new Event("notificationsUpdated"))
     } catch (err) {
-      console.error("Erro ao excluir notificação", err)
+      // Erro silencioso
     } finally {
-        setDeleteConfirmState({ isOpen: false, notificacaoId: null, origem: "backend" })
+      setDeleteConfirmState({ isOpen: false, notificacaoId: null })
     }
   }
 
   const closeDeleteConfirm = () => {
-      setDeleteConfirmState({ isOpen: false, notificacaoId: null, origem: "frontend" })
+    setDeleteConfirmState({ isOpen: false, notificacaoId: null })
   }
 
-    // Aplicar filtros
-    const filteredNotificacoes = unifiedNotifications.filter((n) => {
-      // Filtro de leitura
+  // ✨ Aplicar filtro de leitura
+  const filteredNotificacoes = systemNotifications.filter((n) => {
     if (filter === "unread") return !n.is_read
     if (filter === "read") return n.is_read
-    
-      // Filtro de origem
-      if (originFilter === "frontend") return n.origem === "frontend"
-      if (originFilter === "backend") return n.origem === "backend"
-    
     return true
   })
 
-    const unreadCount = unifiedNotifications.filter((n) => !n.is_read).length
-    const frontendCount = unifiedNotifications.filter((n) => n.origem === "frontend").length
-    const backendCount = unifiedNotifications.filter((n) => n.origem === "backend").length
+  const unreadCount = systemNotifications.filter((n) => !n.is_read).length
 
   return (
     <div className="min-h-screen bg-background">
@@ -209,26 +182,13 @@ export default function NotificacoesPage() {
 
             <div className="flex flex-wrap gap-2 mt-4">
               <Button variant={filter === "all" ? "primary" : "ghost"} size="sm" onClick={() => setFilter("all")}>
-                  Todas ({unifiedNotifications.length})
+                Todas ({systemNotifications.length})
               </Button>
               <Button variant={filter === "unread" ? "primary" : "ghost"} size="sm" onClick={() => setFilter("unread")}>
                 Não lidas ({unreadCount})
               </Button>
               <Button variant={filter === "read" ? "primary" : "ghost"} size="sm" onClick={() => setFilter("read")}>
-                  Lidas ({unifiedNotifications.length - unreadCount})
-                </Button>
-              </div>
-
-              {/* Filtros de origem */}
-              <div className="flex flex-wrap gap-2 mt-3 pt-3 border-t border-border">
-                <Button variant={originFilter === "all" ? "primary" : "ghost"} size="sm" onClick={() => setOriginFilter("all")}>
-                  Todas as origens
-                </Button>
-                <Button variant={originFilter === "frontend" ? "primary" : "ghost"} size="sm" onClick={() => setOriginFilter("frontend")}>
-                  Interface ({frontendCount})
-                </Button>
-                <Button variant={originFilter === "backend" ? "primary" : "ghost"} size="sm" onClick={() => setOriginFilter("backend")}>
-                  Sistema ({backendCount})
+                Lidas ({systemNotifications.length - unreadCount})
               </Button>
             </div>
           </CardHeader>
@@ -256,8 +216,8 @@ export default function NotificacoesPage() {
                 <UnifiedNotificationCard
                   key={n.id}
                   notification={n}
-                  onMarkAsRead={(id) => handleMarkAsRead(id, n.origem)}
-                  onDelete={(id) => handleDelete(id, n.origem)}
+                  onMarkAsRead={handleMarkAsRead}
+                  onDelete={handleDelete}
                 />
               ))}
             </div>
