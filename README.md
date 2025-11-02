@@ -61,7 +61,7 @@ Crie e ative um ambiente virtual Python:
 ```powershell
 python -m venv venv
 .\venv\Scripts\activate # Windows
-.\venv\Scripts\bash     # /Mac
+source venv/bin/activate # Linux/Mac
 ```
 
 **Nota:** Se encontrar erro de política de execução no PowerShell, execute:
