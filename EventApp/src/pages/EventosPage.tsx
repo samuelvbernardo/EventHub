@@ -177,7 +177,7 @@ export default function EventosPage() {
               Anterior
             </Button>
             <span className="text-muted-foreground py-2">
-              Página {page} de {Math.ceil((eventosData.count || 0) / 10)}
+              Página {page} de {Math.ceil((eventosData.count || 0) / 9)}
             </span>
             <Button variant="ghost" disabled={!eventosData.next} onClick={() => setPage(page + 1)}>
               Próxima
