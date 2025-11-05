@@ -2,37 +2,32 @@
 
 import { useForm } from "react-hook-form"
 import { yupResolver } from "@hookform/resolvers/yup"
-import * as yup from "yup"
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "../components/atoms/Card"
 import { Input } from "../components/atoms/Input"
 import { Button } from "../components/atoms/Button"
 import { useOrganizadoresService } from "../services/organizadorService"
 import { useToast } from "../lib/context/ToastContext"
 import { useNavigate } from "react-router-dom"
-
-const schema = yup.object().shape({
-  nome: yup.string().required("Nome é obrigatório"),
-  email: yup.string().email("Email inválido").required("Email é obrigatório"),
-  telefone: yup.string().nullable(),
-  empresa: yup.string().nullable(),
-})
-
-type FormValues = {
-  nome: string
-  email: string
-  telefone?: string
-  empresa?: string
-}
+import { organizadorSchema, type OrganizadorFormData } from "../lib/validators/validationSchema"
 
 export default function OrganizadorRegisterPage() {
-  const { register, handleSubmit, formState: { errors, isSubmitting } } = useForm<FormValues>({ resolver: yupResolver(schema) as any })
+  const { register, handleSubmit, formState: { errors, isSubmitting } } = useForm<OrganizadorFormData>({ 
+    resolver: yupResolver(organizadorSchema) as any 
+  })
   const service = useOrganizadoresService()
   const navigate = useNavigate()
   const toast = useToast()
 
-  const onSubmit = async (data: FormValues) => {
+  const onSubmit = async (data: OrganizadorFormData) => {
     try {
-      await service.createOrganizador(data)
+      // Remove valores null e converte para undefined
+      const payload = {
+        nome: data.nome,
+        email: data.email,
+        telefone: data.telefone || undefined,
+        empresa: data.empresa || undefined,
+      }
+      await service.createOrganizador(payload)
       toast.success('Organizador cadastrado com sucesso!')
       navigate('/login')
     } catch (err: any) {

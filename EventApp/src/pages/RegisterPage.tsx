@@ -1,52 +1,12 @@
 "use client"
 
 import { useState } from "react"
-import * as yup from "yup"
 import { useNavigate } from "react-router-dom"
 import { useApi } from "../lib/hooks/useApi"
 import { useAuth } from "../lib/context/AuthContext"
 import { API_ENDPOINTS } from "../lib/constants/api"
 import { RegisterForm } from "../components/molecules/RegisterForm"
-
-const schema = yup.object().shape({
-  username: yup
-    .string()
-    .min(3, "Usuário deve ter no mínimo 3 caracteres")
-    .max(30, "Usuário deve ter no máximo 30 caracteres")
-    .matches(/^[a-zA-Z0-9_]+$/, "Usuário deve conter apenas letras, números e _")
-    .required("Usuário é obrigatório"),
-  password: yup
-    .string()
-    .min(6, "Senha deve ter no mínimo 6 caracteres")
-    .matches(/[A-Z]/, "Senha deve conter pelo menos uma letra maiúscula")
-    .matches(/[a-z]/, "Senha deve conter pelo menos uma letra minúscula")
-    .matches(/[0-9]/, "Senha deve conter pelo menos um número")
-    .required("Senha é obrigatória"),
-  confirmPassword: yup
-    .string()
-    .oneOf([yup.ref("password")], "As senhas não conferem")
-    .required("Confirmação de senha é obrigatória"),
-  role: yup.string().oneOf(["participante", "organizador"], "Papel inválido").required("Papel é obrigatório"),
-  nome: yup
-    .string()
-    .min(3, "Nome deve ter no mínimo 3 caracteres")
-    .max(150, "Nome deve ter no máximo 150 caracteres")
-    .matches(/^[a-zA-ZÀ-ÿ\s]+$/, "Nome deve conter apenas letras")
-    .required("Nome é obrigatório"),
-  email: yup.string().email("Email inválido").required("Email é obrigatório"),
-  telefone: yup
-    .string()
-    .nullable()
-    .matches(/^(\(\d{2}\)\s\d{4,5}-\d{4})?$/, "Formato inválido. Use (XX) XXXXX-XXXX"),
-  empresa: yup
-    .string()
-    .nullable()
-    .test("empresa-required", "Empresa é obrigatória para organizadores", function (value) {
-      return this.parent.role !== "organizador" || Boolean(value && value.length >= 3)
-    }),
-})
-
-type FormValues = yup.InferType<typeof schema>
+import type { RegisterFormData } from "../lib/validators/validationSchema"
 
 export default function RegisterPage() {
   const api = useApi()
@@ -55,7 +15,7 @@ export default function RegisterPage() {
   const [globalError, setGlobalError] = useState<string | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
 
-  const handleSubmit = async (data: FormValues) => {
+  const handleSubmit = async (data: RegisterFormData) => {
     setGlobalError(null)
     setIsSubmitting(true)
 

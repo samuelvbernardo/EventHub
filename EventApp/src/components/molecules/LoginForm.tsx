@@ -3,7 +3,6 @@
 import { useEffect, useState } from "react"
 import { useForm } from "react-hook-form"
 import { yupResolver } from "@hookform/resolvers/yup"
-import * as yup from "yup"
 import { Button } from "../atoms/Button"
 import { Input } from "../atoms/Input"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "../atoms/Card"
@@ -12,6 +11,7 @@ import { useApi, setDefaultAuthorization } from "../../lib/hooks/useApi"
 import { API_ENDPOINTS } from "../../lib/constants/api"
 import type { User, AuthTokens } from "../../lib/types/index"
 import { storage } from "../../lib/utils/storage"
+import { loginSchema, type LoginFormData } from "../../lib/validators/validationSchema"
 
 interface LoginFormProps {
   onSuccess?: () => void
@@ -23,26 +23,8 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onSuccess }) => {
   const { login } = useAuth()
   const api = useApi()
 
-  const schema = yup.object().shape({
-    username: yup.string()
-      .min(3, "Usuário deve ter no mínimo 3 caracteres")
-      .max(30, "Usuário deve ter no máximo 30 caracteres")
-      .matches(/^[a-zA-Z0-9_]+$/, "Usuário deve conter apenas letras, números e _")
-      .required("Por favor, insira seu usuário"),
-    password: yup.string()
-      .min(6, "Senha deve ter no mínimo 6 caracteres")
-      .max(50, "Senha muito longa")
-      .matches(/\S/, "A senha não pode conter apenas espaços em branco")
-      .required("Por favor, insira sua senha"),
-  })
-
-  interface LoginFormValues {
-    username: string
-    password: string
-  }
-
-  const { register, handleSubmit, formState: { errors }, watch } = useForm<LoginFormValues>({ 
-    resolver: yupResolver(schema),
+  const { register, handleSubmit, formState: { errors }, watch } = useForm<LoginFormData>({ 
+    resolver: yupResolver(loginSchema),
     defaultValues: {
       username: '',
       password: ''
@@ -57,7 +39,7 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onSuccess }) => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [usernameValue, passwordValue])
 
-  const onSubmit = async (values: LoginFormValues) => {
+  const onSubmit = async (values: LoginFormData) => {
     setError("")
     setLoading(true)
     try {
