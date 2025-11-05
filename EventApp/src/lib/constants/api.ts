@@ -24,4 +24,8 @@ export const API_ENDPOINTS = {
   // Participantes
   PARTICIPANTES: "/v1/participantes/",
   PARTICIPANTE_DETAIL: (id: number) => `/v1/participantes/${id}/`,
+
+  // Organizadores
+  ORGANIZADORES: "/v1/organizadores/",
+  ORGANIZADOR_DETAIL: (id: number) => `/v1/organizadores/${id}/`,
 }
