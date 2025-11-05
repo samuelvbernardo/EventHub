@@ -15,6 +15,7 @@ import { ParticipanteDetailModal } from "../components/molecules/ParticipanteDet
 import { getInscricaoStatusBadgeClasses } from "../lib/constants/statusColors"
 import { StatusIcon } from "../components/atoms/StatusIcon"
 import { getInscricaoStatusLabel } from "../lib/utils/helpers"
+import { PAGE_SIZE } from "../lib/constants/api"
 
 export default function InscricoesPage() {
   const [searchTerm, setSearchTerm] = useState("")
@@ -267,7 +268,7 @@ export default function InscricoesPage() {
               Anterior
             </Button>
             <span className="text-muted-foreground py-2">
-              Página {page} de {Math.ceil((inscricoesData.count || 0) / 10)}
+              Página {page} de {Math.ceil((inscricoesData.count || 0) / PAGE_SIZE)}
             </span>
             <Button variant="ghost" disabled={!inscricoesData.next} onClick={() => setPage(page + 1)}>
               Próxima

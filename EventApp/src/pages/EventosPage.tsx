@@ -13,6 +13,7 @@ import { useInscricoesService } from "../services/inscricaoService"
 import { useAuth } from "../lib/context/AuthContext"
 import { useToast } from "../lib/context/ToastContext"
 import type { Evento } from "../lib/types/index"
+import { PAGE_SIZE } from "../lib/constants/api"
 
 export default function EventosPage() {
   const [searchTerm, setSearchTerm] = useState("")
@@ -177,7 +178,7 @@ export default function EventosPage() {
               Anterior
             </Button>
             <span className="text-muted-foreground py-2">
-              Página {page} de {Math.ceil((eventosData.count || 0) / 9)}
+              Página {page} de {Math.ceil((eventosData.count || 0) / PAGE_SIZE)}
             </span>
             <Button variant="ghost" disabled={!eventosData.next} onClick={() => setPage(page + 1)}>
               Próxima

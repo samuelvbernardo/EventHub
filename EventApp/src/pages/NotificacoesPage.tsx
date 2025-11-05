@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useState, useCallback } from "react"
 import { useNotificacoesService } from "../services/notifiacaoService"
 import { useAuth } from "../lib/context/AuthContext"
 import { Card, CardContent, CardHeader, CardTitle } from "../components/atoms/Card"
@@ -11,9 +11,9 @@ import { Header } from "../components/organisms/Header"
 import { UnifiedNotificationCard } from "../components/molecules/UnifiedNotificationCard"
 import type { Notificacao } from "../lib/types/index"
 import type { NotificationType } from "../lib/context/NotificationContext"
+import { useToast } from "../lib/context/ToastContext"
 
-// ✨ Tipo unificado APENAS para notificações do SISTEMA (backend)
-// Notificações de UI (toasts) NÃO aparecem mais aqui
+
 interface SystemNotificationDisplay {
   id: string
   tipo: NotificationType
@@ -26,9 +26,11 @@ interface SystemNotificationDisplay {
 export default function NotificacoesPage() {
   const service = useNotificacoesService()
   const { state } = useAuth()
+  const toast = useToast()
   const [notificacoes, setNotificacoes] = useState<Notificacao[]>([])
   const [loading, setLoading] = useState(true)
   const [filter, setFilter] = useState<"all" | "unread" | "read">("all")
+  const [unreadCount, setUnreadCount] = useState(0)
   const [deleteConfirmState, setDeleteConfirmState] = useState<{
     isOpen: boolean
     notificacaoId: number | null
@@ -37,54 +39,58 @@ export default function NotificacoesPage() {
     notificacaoId: null,
   })
 
-  useEffect(() => {
-    let mounted = true
-    let timer: number | undefined
+  // Carregar contador de não lidas
+  const loadUnreadCount = useCallback(async () => {
+    try {
+      const count = await service.getUnreadCount()
+      setUnreadCount(count)
+    } catch (err) {
+      // Erro silencioso
+    }
+  }, [service])
 
-    const load = async () => {
-      if (!mounted) return
-      setLoading(true)
-      try {
-        // ✨ Carregar TODAS as notificações (não apenas a primeira página)
-        let allNotifications: Notificacao[] = []
-        let page = 1
-        let hasMore = true
+  // Carregar todas as notificações
+  const loadNotifications = useCallback(async () => {
+    if (!state.user?.id) return
+    
+    setLoading(true)
+    try {
+      let allNotifications: Notificacao[] = []
+      let currentPage = 1
+      let hasMore = true
 
-        while (hasMore) {
-          const data = await service.listNotificacoes(page)
-          const results = data.results || data
-          
-          if (Array.isArray(results)) {
-            allNotifications = [...allNotifications, ...results]
-            
-            // Verificar se há mais páginas
-            hasMore = !!data.next
-            page++
-          } else {
-            hasMore = false
-          }
-        }
-
-        if (mounted) setNotificacoes(allNotifications)
-      } catch (err) {
-        // Erro silencioso - manter estado anterior
-      } finally {
-        if (mounted) setLoading(false)
+      while (hasMore) {
+        const data = await service.listNotificacoes(currentPage)
+        allNotifications = [...allNotifications, ...(data.results || [])]
+        hasMore = !!data.next
+        currentPage++
       }
+
+      setNotificacoes(allNotifications)
+    } catch (err) {
+      toast.error("Erro ao carregar notificações")
+    } finally {
+      setLoading(false)
     }
+  }, [state.user?.id, service, toast])
 
-    // primeira carga imediata
-    load()
-    // polling controlado a cada 30s
-    timer = window.setInterval(load, 30000)
+  // Carregar dados iniciais
+  useEffect(() => {
+    loadUnreadCount()
+    loadNotifications()
+  }, [loadUnreadCount, loadNotifications])
 
-    return () => {
-      mounted = false
-      if (timer) window.clearInterval(timer)
-    }
-  }, [state.user?.id, service])
+  // Polling
+  useEffect(() => {
+    const timer = window.setInterval(() => {
+      loadUnreadCount()
+      loadNotifications()
+    }, 30000)
 
-  // ✨ Converter notificações do backend para formato de exibição
+    return () => window.clearInterval(timer)
+  }, [loadUnreadCount, loadNotifications])
+
+  // Converter notificações do backend para formato de exibição
   const backendToDisplay = (n: Notificacao): SystemNotificationDisplay => ({
     id: `backend-${n.id}`,
     tipo: "info", // Notificações do backend são geralmente informativas
@@ -94,19 +100,16 @@ export default function NotificacoesPage() {
     evento_titulo: n.evento_titulo
   })
 
-  // ✨ APENAS notificações do backend (sistema) são exibidas
-  const systemNotifications = notificacoes
-    .map(backendToDisplay)
-    .sort((a, b) => b.data.getTime() - a.data.getTime())
-
   const handleMarkAsRead = async (id: string) => {
     const backendId = parseInt(id.replace("backend-", ""))
     try {
       await service.markAsRead(backendId)
       setNotificacoes((prev) => prev.map((it) => (it.id === backendId ? { ...it, is_read: true } : it)))
+      await loadUnreadCount()
       window.dispatchEvent(new Event("notificationsUpdated"))
+      toast.success("Notificação marcada como lida")
     } catch (err) {
-      // Erro silencioso
+      toast.error("Erro ao marcar como lida")
     }
   }
 
@@ -115,9 +118,11 @@ export default function NotificacoesPage() {
       const unreadNotifications = notificacoes.filter((n) => !n.is_read)
       await Promise.all(unreadNotifications.map((n) => service.markAsRead(n.id)))
       setNotificacoes((prev) => prev.map((it) => ({ ...it, is_read: true })))
+      await loadUnreadCount()
       window.dispatchEvent(new Event("notificationsUpdated"))
+      toast.success("Todas as notificações foram marcadas como lidas!")
     } catch (err) {
-      // Erro silencioso
+      toast.error("Erro ao marcar todas como lidas")
     }
   }
 
@@ -136,9 +141,12 @@ export default function NotificacoesPage() {
     try {
       await service.deleteNotificacao(notificacaoId)
       setNotificacoes((prev) => prev.filter((it) => it.id !== notificacaoId))
+      await loadUnreadCount()
+      await loadNotifications()
       window.dispatchEvent(new Event("notificationsUpdated"))
+      toast.success("Notificação removida com sucesso!")
     } catch (err) {
-      // Erro silencioso
+      toast.error("Erro ao remover notificação")
     } finally {
       setDeleteConfirmState({ isOpen: false, notificacaoId: null })
     }
@@ -148,14 +156,19 @@ export default function NotificacoesPage() {
     setDeleteConfirmState({ isOpen: false, notificacaoId: null })
   }
 
-  // ✨ Aplicar filtro de leitura
+  const systemNotifications = notificacoes
+    .map(backendToDisplay)
+    .sort((a, b) => b.data.getTime() - a.data.getTime())
+
+  // Aplicar filtro de leitura
   const filteredNotificacoes = systemNotifications.filter((n) => {
     if (filter === "unread") return !n.is_read
     if (filter === "read") return n.is_read
     return true
   })
 
-  const unreadCount = systemNotifications.filter((n) => !n.is_read).length
+  const totalCount = notificacoes.length
+  const readCount = notificacoes.filter(n => n.is_read).length
 
   return (
     <div className="min-h-screen bg-background">
@@ -182,13 +195,13 @@ export default function NotificacoesPage() {
 
             <div className="flex flex-wrap gap-2 mt-4">
               <Button variant={filter === "all" ? "primary" : "ghost"} size="sm" onClick={() => setFilter("all")}>
-                Todas ({systemNotifications.length})
+                Todas ({totalCount})
               </Button>
               <Button variant={filter === "unread" ? "primary" : "ghost"} size="sm" onClick={() => setFilter("unread")}>
                 Não lidas ({unreadCount})
               </Button>
               <Button variant={filter === "read" ? "primary" : "ghost"} size="sm" onClick={() => setFilter("read")}>
-                Lidas ({systemNotifications.length - unreadCount})
+                Lidas ({readCount})
               </Button>
             </div>
           </CardHeader>

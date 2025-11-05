@@ -1,5 +1,8 @@
 export const API_BASE_URL = import.meta.env.VITE_API_URL
 
+// Configuração de paginação (deve coincidir com settings.py do backend)
+export const PAGE_SIZE = 9
+
 export const API_ENDPOINTS = {
   // Auth
   LOGIN: "/token/",
