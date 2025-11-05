@@ -110,7 +110,6 @@ export const Header: React.FC = () => {
 
             {/* Username - Hidden on mobile */}
             {state.user && <span className="hidden sm:block text-sm text-muted-foreground">Olá, {state.user.username}</span>}
-            {state.user && <span className="text-sm text-muted-foreground">Olá, {state.user.username}</span>}
             {/* Ícone de notificações com badge */}
               <Link to="/notificacoes" className="relative inline-flex items-center">
                 <svg 
@@ -133,7 +132,7 @@ export const Header: React.FC = () => {
                   </span>
                 )}
               </Link>
-            <Button variant="ghost" size="sm" onClick={handleLogoutClick}>
+            <Button variant="ghost" size="sm" onClick={handleLogoutClick} className="text-red-600 hover:text-red-700 hover:bg-red-50">
               <svg 
                 className="w-4 h-4 mr-2" 
                 fill="none" 
